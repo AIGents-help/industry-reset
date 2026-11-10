@@ -109,6 +109,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--p2)}
 <div id="toast"></div>
 
 <script src="leads.js"></script>
+<script src="catalog.js"></script>
 <script>
 /* ============ CORE ============ */
 const KEY='ir_control_room_v1', HQ={lat:39.8376,lon:-75.4513,zip:'19061'};
@@ -126,7 +127,7 @@ function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';cl
 
 const STAGES=['New','Contacted','Site Visit','Quoted','Won','Lost'];
 const SERVICES={
- 'BRM Reset':['Check in at gate / safe-work permit signed','Confirm gas test & area clearance with unit ops','PPE: FRC, H2S/4-gas monitor, gloves, eye protection','BEFORE photos — every wall, seat, grille, kitchenette','Dry-steam sanitize walls to ceiling','Desks, counters, consoles (low-moisture near electronics)','Kitchenette: fridge, microwave, sink, cabinets','HVAC grilles & returns cleaned','Heated extraction on chairs & seating','Enzyme odor treatment','Floors scrubbed & dried','AFTER photos (same angles)','Client walkthrough & sign-off'],
+ 'BRM Reset':['Check in at gate / safe-work permit signed','Confirm gas test & area clearance with unit ops','PPE: FRC, H2S/4-gas monitor, gloves, eye protection','BEFORE photos — every wall, seat, grille, kitchenette','Dry-steam degrease walls, ceiling & door','HEPA removal of catalyst / coke / sulfur dust (top-down)','HVAC grilles & returns cleaned','Heated extraction on chairs & seating','Hydrocarbon & sulfur odor treatment','Floor & entry decon (machine scrub)','AFTER photos (same angles)','Client walkthrough & sign-off'],
  'Shelter / Control Room Reset':['Check in at gate / safe-work permit signed','Coordinate with board operator — no console disruption','PPE: FRC, gas monitor','BEFORE photos','Low-moisture clean on consoles & electronics zones','Heated extraction on chairs & seating','Walls, doors, handles sanitized','HVAC grilles & returns','Enzyme odor treatment','Floors','AFTER photos','Client walkthrough & sign-off'],
  'Blind Exchange':['Count & measure blinds per unit','BEFORE photos','Remove dirty set — tag with site/unit','Install clean set','Log inventory (out / in)','Removed set to cleaning queue','AFTER photos'],
  'Fleet Reset':['Vehicle check-in: unit #, mileage, damage photos','BEFORE photos','Patient compartment / cage disinfection','Seats & headliner extraction','High-touch surfaces sanitized','Odor treatment','AFTER photos','Release to fleet manager with report'],
@@ -134,8 +135,8 @@ const SERVICES={
 };
 
 function seed(){
- const leads=(window.IR_SEED_LEADS||[]).map(r=>({id:uid('L'),company:r[0],site:r[1],segment:r[2],city:r[3],st:r[4],lat:r[5],lon:r[6],dist:miles(r[5],r[6]),units:r[7],priority:r[8],website:r[9],status:'New',contact:'',title:'',phone:'',email:'',nextFollow:'',notes:r[10]?[{d:today(),t:r[10]}]:[],created:today()}));
- return {v:1,settings:{passHash:'',biz:'Industry Reset',phone:'484-836-5191',email:'',reviewLink:'',rate:875,plan:'Quarterly',owner:'Tony'},
+ const leads=(window.IR_SEED_LEADS||[]).map(r=>attachEst({id:uid('L'),company:r[0],site:r[1],segment:r[2],city:r[3],st:r[4],lat:r[5],lon:r[6],dist:miles(r[5],r[6]),units:r[7],priority:r[8],website:r[9],status:'New',contact:'',title:'',phone:'',email:'',nextFollow:'',notes:r[10]?[{d:today(),t:r[10]}]:[],created:today()},r[7]));
+ return {v:2,settings:{passHash:'',biz:'Industry Reset',phone:'484-836-5191',email:'',reviewLink:'',rate:875,plan:'Quarterly',owner:'Tony'},
   leads,jobs:[],quotes:[],invoices:[],reviews:[],
   crew:[{id:uid('C'),name:'Tony Kates',role:'Owner / Lead Tech',phone:'484-836-5191',certs:'OSHA 10, refinery site orientation',twic:'',active:true}],
   equipment:[
@@ -147,7 +148,23 @@ function seed(){
   blinds:{stock:0,atClients:0,cleaning:0},log:[]};
 }
 let S;
-function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null} if(!S||!S.leads){S=seed();save()}}
+function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null} if(!S||!S.leads){S=seed();save()}
+ if((S.v||1)<2){const old={};(window.IR_SEED_LEADS||[]).forEach(r=>old[r[0]+'|'+r[1]]=r[7]);S.leads.forEach(l=>attachEst(l,old[l.company+'|'+l.site]));S.v=2;save()}}
+/* ---- field-shelter estimates & revenue ---- */
+const OFFSEG=/Rental|Contractor/;
+function attachEst(l,oldUnits){const e=(window.IR_EST||{})[l.company+'|'+l.site];if(e&&!l.est){l.est=e;if(l.units===oldUnits||l.units==null)l.units=e.fs[1];
+ if(!e.fs[1]&&!e.mix[5]&&l.status==='New'&&l.priority!=='C'){l.priority='C';l.notes=l.notes||[];l.notes.push({d:today(),t:'Off-focus: no field operator shelters expected (offices / gates / trailers only).'})}}
+ l.counts=l.counts||{};return l}
+const ftype=l=>l.est?IR.focusType(l.est):(/Fleet/.test(l.segment)?'veh':'sh');
+const hasActual=l=>IR.countTotal(l.counts)>0;
+const vpy=l=>OFFSEG.test(l.segment)?1:IR.PLANS[(l.scope&&l.scope.plan)||'Quarterly'];
+function focusCount(l){return hasActual(l)?(+l.counts[ftype(l)]||0):(l.est?l.est.fs[1]:(+l.units||0))}
+function leadRev(l){const n=vpy(l),sel=l.scope&&l.scope.sel;
+ if(hasActual(l)){const v=IR.visitTotal(l.counts,sel).total;return {visit:v,annual:v*n,lo:v*n,hi:v*n,actual:true,n}}
+ if(l.est){const r=IR.revenue(l.est,n,sel);return {...r,n}}
+ const rate=IR.unitPrice(ftype(l),sel),v=(+l.units||0)*rate;return {visit:v,annual:v*n,lo:v*n,hi:v*n,n}}
+const k$=n=>n>=1000?'$'+(n/1000).toFixed(n>=10000?0:1)+'K':fmt$(n);
+function syncUnits(l){l.units=focusCount(l)}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Storage full — export a backup')}}
 const lead=id=>S.leads.find(l=>l.id===id);
 const leadName=id=>{const l=lead(id);return l?`${l.company} — ${l.site}`:'(no account)'};
@@ -163,7 +180,7 @@ if(sessionStorage.getItem('ir_ok'))boot();
 
 /* ============ NAV ============ */
 const VIEWS=[['dash','◉','Dashboard'],['crm','◎','CRM / Leads'],['sched','▦','Schedule'],['jobs','✓','Jobs'],['money','$','Quotes & Invoices'],['reviews','★','Reviews'],['crew','⚙','Crew & Gear'],['agents','✦','AIGents'],['settings','≡','Settings']];
-let V='dash',crmMode='table',crmF={q:'',seg:'',st:'',pri:'',r:50},wk=0,jobF='open';
+let V='dash',crmMode='table',crmF={q:'',seg:'',st:'',pri:'',r:50,fit:'core',sort:'rev'},wk=0,jobF='open';
 function renderNav(){
  $('#nav').innerHTML=`<div class="logo"><img src="/img/logo.png" alt=""><div><div class="brand" style="font-size:14px">AIGENTS</div><small>CONTROL ROOM</small></div></div>`+
  VIEWS.map(v=>`<button data-v="${v[0]}" onclick="go('${v[0]}')"><span class="ic">${v[1]}</span><span>${v[2].replace('Quotes & Invoices','Money').replace('CRM / Leads','CRM')}</span></button>`).join('');
@@ -178,9 +195,11 @@ function logA(t){S.log.unshift({d:new Date().toISOString(),t});S.log=S.log.slice
 /* ============ DASHBOARD ============ */
 function vDash(){
  const open=S.leads.filter(l=>!['Won','Lost'].includes(l.status));
- const pipe=open.reduce((a,l)=>a+(+l.units||0)*S.settings.rate*4,0);
+ const isCore=l=>ftype(l)==='sh'&&focusCount(l)>0;
+ const pipe=open.filter(isCore).reduce((a,l)=>a+leadRev(l).annual,0),fleetPot=open.filter(l=>ftype(l)==='veh').reduce((a,l)=>a+leadRev(l).annual,0);
+ const fsTot=S.leads.filter(l=>ftype(l)==='sh'&&!OFFSEG.test(l.segment)).reduce((a,l)=>a+focusCount(l),0);
  const won=S.leads.filter(l=>l.status==='Won');
- const arr=won.reduce((a,l)=>a+(+l.units||0)*S.settings.rate*4,0);
+ const arr=won.reduce((a,l)=>a+leadRev(l).annual,0);
  const m=today().slice(0,7);
  const paidM=S.invoices.filter(i=>i.status==='Paid'&&(i.paid||'').startsWith(m)).reduce((a,i)=>a+ +i.amount,0);
  const unpaid=S.invoices.filter(i=>i.status!=='Paid').reduce((a,i)=>a+ +i.amount,0);
@@ -190,11 +209,11 @@ function vDash(){
  const rv=S.reviews.filter(r=>r.rating);const avg=rv.length?(rv.reduce((a,r)=>a+ +r.rating,0)/rv.length).toFixed(1):'—';
  const counts=STAGES.map(s=>[s,S.leads.filter(l=>l.status===s).length]);
  const maxC=Math.max(1,...counts.map(c=>c[1]));
- const hot=S.leads.filter(l=>l.status==='New'&&l.priority==='A').sort((a,b)=>a.dist-b.dist).slice(0,6);
+ const hot=S.leads.filter(l=>l.status==='New'&&isCore(l)).sort((a,b)=>leadRev(b).annual-leadRev(a).annual).slice(0,7);
  $('#main').innerHTML=hdr(`<span>AIGents</span> Control Room`,`<button class="btn" onclick="leadForm()">+ Lead</button><button class="btn g" onclick="jobForm()">+ Job</button>`)+`
  <div class="grid g4">
-  <div class="card kpi"><div class="l">Open pipeline (annual)</div><div class="v">${fmt$(pipe)}</div><div class="s">${open.length} open leads</div></div>
-  <div class="card kpi"><div class="l">Contracted ARR</div><div class="v ok">${fmt$(arr)}</div><div class="s">${won.length} clients · ${won.reduce((a,l)=>a+ +l.units,0)} units</div></div>
+  <div class="card kpi"><div class="l">Field-shelter potential / yr</div><div class="v">${fmt$(pipe)}</div><div class="s">~${fsTot} field shelters in territory · Fleet upside ${k$(fleetPot)}</div></div>
+  <div class="card kpi"><div class="l">Contracted ARR</div><div class="v ok">${fmt$(arr)}</div><div class="s">${won.length} clients · ${won.reduce((a,l)=>a+focusCount(l),0)} field shelters</div></div>
   <div class="card kpi"><div class="l">Collected this month</div><div class="v">${fmt$(paidM)}</div><div class="s">${fmt$(unpaid)} outstanding</div></div>
   <div class="card kpi"><div class="l">Avg review</div><div class="v">${avg}<span class="small muted"> ★</span></div><div class="s">${rv.length} reviews · ${S.reviews.filter(r=>!r.rating).length} pending</div></div>
  </div>
@@ -204,31 +223,36 @@ function vDash(){
   <div class="card"><h3>Pipeline by stage</h3>${counts.map(([s,c])=>`<div class="mt" style="margin-top:9px"><div class="row small"><span>${s}</span><span class="sp"></span><b>${c}</b></div><div class="bar"><i style="width:${c/maxC*100}%;${s==='Won'?'background:var(--ok)':s==='Lost'?'background:var(--bad)':''}"></i></div></div>`).join('')}</div>
  </div>
  <div class="grid g2 mt">
-  <div class="card"><h3>Hit list — closest A-priority, not yet contacted</h3>${hot.map(l=>`<div class="list-item row" style="cursor:pointer" onclick="leadView('${l.id}')"><div class="sp"><b>${esc(l.company)}</b><div class="muted small">${esc(l.site)} · ${esc(l.segment)}</div></div><span class="pill">${l.dist} mi</span></div>`).join('')||'<p class="muted">All A-leads touched. 🔥</p>'}</div>
+  <div class="card"><h3>Biggest targets — not yet contacted</h3>${hot.map(l=>`<div class="list-item row" style="cursor:pointer" onclick="leadView('${l.id}')"><div class="sp"><b>${esc(l.company)}</b><div class="muted small">${esc(l.site)} · ${focusCount(l)} ${ftype(l)==='veh'?'vehicles':'field shelters'} · ${l.dist||'—'} mi</div></div><b class="ok">${k$(leadRev(l).annual)}/yr</b></div>`).join('')||'<p class="muted">Every target touched. 🔥</p>'}</div>
   <div class="card"><h3>Activity</h3>${S.log.slice(0,8).map(a=>`<div class="list-item small"><span class="muted">${new Date(a.d).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span> — ${esc(a.t)}</div>`).join('')||'<p class="muted">No activity yet.</p>'}</div>
  </div>`;
 }
 
 /* ============ CRM ============ */
-function filtered(){const q=crmF.q.toLowerCase();return S.leads.filter(l=>(!q||[l.company,l.site,l.city,l.contact,l.segment].join(' ').toLowerCase().includes(q))&&(!crmF.seg||l.segment===crmF.seg)&&(!crmF.st||l.status===crmF.st)&&(!crmF.pri||l.priority===crmF.pri)&&(!crmF.r||l.dist<=crmF.r)).sort((a,b)=>(a.priority+String(a.dist).padStart(3,'0')).localeCompare(b.priority+String(b.dist).padStart(3,'0')))}
+function filtered(){const q=crmF.q.toLowerCase();return S.leads.filter(l=>(!q||[l.company,l.site,l.city,l.contact,l.segment].join(' ').toLowerCase().includes(q))&&(!crmF.seg||l.segment===crmF.seg)&&(!crmF.st||l.status===crmF.st)&&(!crmF.pri||l.priority===crmF.pri)&&(!crmF.r||l.dist<=crmF.r)&&fitOk(l)).sort(crmF.sort==='rev'?(a,b)=>leadRev(b).annual-leadRev(a).annual:crmF.sort==='dist'?(a,b)=>a.dist-b.dist:(a,b)=>(a.priority+String(a.dist).padStart(3,'0')).localeCompare(b.priority+String(b.dist).padStart(3,'0')))}
+function fitOk(l){const t=ftype(l),c=focusCount(l);return !crmF.fit||(crmF.fit==='core'&&t==='sh'&&c>0)||(crmF.fit==='fleet'&&t==='veh')||(crmF.fit==='off'&&c===0)}
 function vCrm(){
  const segs=[...new Set(S.leads.map(l=>l.segment))].sort();
  const L=filtered();
- $('#main').innerHTML=hdr('CRM <span>/ Leads</span>',`<button class="btn g s" onclick="crmMode=crmMode==='table'?'kan':'table';vCrm()">${crmMode==='table'?'Pipeline view':'Table view'}</button><button class="btn g s" onclick="exportCSV()">Export CSV</button><button class="btn" onclick="leadForm()">+ Lead</button>`)+`
+ $('#main').innerHTML=hdr('CRM <span>/ Leads</span>',`<button class="btn g s" onclick="crmMode=crmMode==='table'?'kan':'table';vCrm()">${crmMode==='table'?'Pipeline view':'Table view'}</button><button class="btn g s" onclick="importPrompt()">Import client scope</button><button class="btn g s" onclick="exportCSV()">Export CSV</button><button class="btn" onclick="leadForm()">+ Lead</button>`)+`
  <div class="card mb"><div class="row">
   <input style="max-width:260px" placeholder="Search company, site, city…" value="${esc(crmF.q)}" oninput="crmF.q=this.value;clearTimeout(window._qt);window._qt=setTimeout(()=>{vCrm();const i=document.querySelector('#main input');i.focus();i.setSelectionRange(99,99)},250)">
   <select style="max-width:200px" onchange="crmF.seg=this.value;vCrm()"><option value="">All segments</option>${segs.map(s=>`<option ${crmF.seg===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
   <select style="max-width:150px" onchange="crmF.st=this.value;vCrm()"><option value="">All stages</option>${STAGES.map(s=>`<option ${crmF.st===s?'selected':''}>${s}</option>`).join('')}</select>
   <select style="max-width:120px" onchange="crmF.pri=this.value;vCrm()"><option value="">Any priority</option>${['A','B','C'].map(s=>`<option ${crmF.pri===s?'selected':''}>${s}</option>`).join('')}</select>
+  <select style="max-width:170px" onchange="crmF.fit=this.value;vCrm()">${[['','All fits'],['core','Field shelters (core)'],['fleet','Fleet Reset'],['off','Off-focus']].map(([v,t])=>`<option value="${v}" ${crmF.fit===v?'selected':''}>${t}</option>`).join('')}</select>
+  <select style="max-width:170px" onchange="crmF.sort=this.value;vCrm()">${[['rev','Sort: revenue'],['pri','Sort: priority'],['dist','Sort: distance']].map(([v,t])=>`<option value="${v}" ${crmF.sort===v?'selected':''}>${t}</option>`).join('')}</select>
   <select style="max-width:140px" onchange="crmF.r=+this.value;vCrm()">${[10,25,50,0].map(r=>`<option value="${r}" ${crmF.r===r?'selected':''}>${r?'≤ '+r+' mi':'Any distance'}</option>`).join('')}</select>
   <span class="muted small">${L.length} of ${S.leads.length} · radius from ${HQ.zip}</span>
  </div></div>`+(crmMode==='table'?`
- <div class="tw"><table><thead><tr><th>Pri</th><th>Company / Site</th><th class="hide-m">Segment</th><th>Mi</th><th class="hide-m">Est. units</th><th>Stage</th><th class="hide-m">Contact</th><th class="hide-m">Next</th></tr></thead><tbody>
- ${L.map(l=>`<tr class="click" onclick="leadView('${l.id}')"><td><span class="pill p${l.priority}">${l.priority}</span></td><td><b>${esc(l.company)}</b><div class="muted small">${esc(l.site)} · ${esc(l.city)}, ${l.st}</div></td><td class="hide-m small">${esc(l.segment)}</td><td>${l.dist||'—'}</td><td class="hide-m">${l.units||'—'}</td><td><span class="pill st-${l.status.replace(' ','')}">${l.status}</span></td><td class="hide-m small">${l.contact?esc(l.contact):'<span class="warn">Find contact</span>'}</td><td class="hide-m small ${l.nextFollow&&l.nextFollow<=today()?'warn':''}">${fdate(l.nextFollow)}</td></tr>`).join('')}
+ <div class="tw"><table><thead><tr><th>Pri</th><th>Company / Site</th><th class="hide-m">Segment</th><th>Mi</th><th>Field shelters</th><th>Potential / yr</th><th>Stage</th><th class="hide-m">Contact</th><th class="hide-m">Next</th></tr></thead><tbody>
+ ${L.map(l=>`<tr class="click" onclick="leadView('${l.id}')"><td><span class="pill p${l.priority}">${l.priority}</span></td><td><b>${esc(l.company)}</b><div class="muted small">${esc(l.site)} · ${esc(l.city)}, ${l.st}</div></td><td class="hide-m small">${esc(l.segment)}</td><td>${l.dist||'—'}</td><td>${fsCell(l)}</td><td>${revCell(l)}</td><td><span class="pill st-${l.status.replace(' ','')}">${l.status}</span></td><td class="hide-m small">${l.contact?esc(l.contact):'<span class="warn">Find contact</span>'}</td><td class="hide-m small ${l.nextFollow&&l.nextFollow<=today()?'warn':''}">${fdate(l.nextFollow)}</td></tr>`).join('')}
  </tbody></table></div>`:`
- <div class="kan">${STAGES.map(s=>{const c=L.filter(l=>l.status===s);return `<div class="col" ondragover="event.preventDefault()" ondrop="dropLead(event,'${s}')"><h3><span>${s}</span><span class="muted">${c.length}</span></h3>${c.map(l=>`<div class="kc" draggable="true" ondragstart="event.dataTransfer.setData('id','${l.id}')" onclick="leadView('${l.id}')"><b>${esc(l.company)}</b><span class="muted">${esc(l.site)}</span><div class="row small mt" style="margin-top:6px"><span class="pill p${l.priority}">${l.priority}</span><span class="muted">${l.dist} mi · ${l.units||0}u</span></div></div>`).join('')}</div>`}).join('')}</div>
+ <div class="kan">${STAGES.map(s=>{const c=L.filter(l=>l.status===s);return `<div class="col" ondragover="event.preventDefault()" ondrop="dropLead(event,'${s}')"><h3><span>${s}</span><span class="muted">${c.length}</span></h3>${c.map(l=>`<div class="kc" draggable="true" ondragstart="event.dataTransfer.setData('id','${l.id}')" onclick="leadView('${l.id}')"><b>${esc(l.company)}</b><span class="muted">${esc(l.site)}</span><div class="row small mt" style="margin-top:6px"><span class="pill p${l.priority}">${l.priority}</span><span class="muted">${l.dist||'—'} mi · ${focusCount(l)}${ftype(l)==='veh'?'v':' FS'} · ${k$(leadRev(l).annual)}</span></div></div>`).join('')}</div>`}).join('')}</div>
  <p class="muted small">Drag cards between stages (desktop) or open a card to change stage.</p>`);
 }
+function fsCell(l){const t=ftype(l)==='veh'?' veh':'';if(hasActual(l))return `<b>${focusCount(l)}</b>${t} <span class="ok small" title="Confirmed count">✓</span>`;if(!l.est)return (l.units||0)+t;const f=l.est.fs;return `${f[1]}${t} <span class="muted small">(${f[0]}–${f[2]})</span>${l.est.conf==='Medium'?'':' <span class="muted small" title="Low confidence — rule of thumb">·est</span>'}`}
+function revCell(l){const r=leadRev(l);if(!r.annual)return '<span class="muted">—</span>';return `<b class="ok">${k$(r.annual)}</b>${r.actual||r.lo===r.hi?'':`<div class="muted small">${k$(r.lo)}–${k$(r.hi)}</div>`}`}
 function dropLead(e,s){const l=lead(e.dataTransfer.getData('id'));if(l){setStage(l,s);save();vCrm()}}
 function setStage(l,s){if(l.status!==s){logA(`${l.company}: ${l.status} → ${s}`);l.status=s;if(s==='Contacted'&&!l.nextFollow)l.nextFollow=addDays(today(),4)}}
 function leadView(id){
@@ -242,40 +266,83 @@ function leadView(id){
   <div><label>Title</label><input id="f_title" value="${esc(l.title)}" placeholder="Site services / EHS / Facilities"></div>
   <div><label>Phone</label><input id="f_phone" value="${esc(l.phone)}"></div>
   <div><label>Email</label><input id="f_email" value="${esc(l.email)}"></div>
-  <div><label>Est. units</label><input id="f_units" type="number" value="${l.units||0}"></div>
   <div><label>Priority</label><select id="f_priority">${['A','B','C'].map(p=>`<option ${l.priority===p?'selected':''}>${p}</option>`).join('')}</select></div>
   <div><label>Next follow-up</label><input id="f_nextFollow" type="date" value="${l.nextFollow||''}"></div>
   <div><label>Website</label><input id="f_website" value="${esc(l.website)}"></div>
  </div>
  <div class="row mt">${l.phone?`<a class="btn g s" href="tel:${esc(l.phone)}">Call</a><a class="btn g s" href="sms:${esc(l.phone)}">Text</a>`:''}${l.email?`<a class="btn g s" href="mailto:${esc(l.email)}">Email</a>`:''}${l.website?`<a class="btn g s" target="_blank" href="https://${esc(l.website.replace(/^https?:\/\//,''))}">Website</a>`:''}<a class="btn g s" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lon}">Map</a><a class="btn g s" target="_blank" href="https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(l.company+' facilities manager')}">Find contact</a></div>
- <div class="row mt"><span class="muted small">Est. annual value: <b class="ok">${fmt$((+l.units||0)*S.settings.rate*4)}</b> at ${fmt$(S.settings.rate)}/unit/qtr</span></div>
+ ${spacePanel(l)}
  <label>Notes & activity</label>
  <div class="row"><input id="f_note" placeholder="Log a call, visit, objection…" onkeydown="if(event.key==='Enter')addNote('${id}')"><button class="btn s" onclick="addNote('${id}')">Log</button></div>
  <div class="mt">${(l.notes||[]).map(n=>`<div class="list-item small"><span class="muted">${fdate(n.d)}</span> — ${esc(n.t)}</div>`).join('')||'<p class="muted small">No notes.</p>'}</div>
  ${jobs.length||qs.length?`<label>Jobs & quotes</label>${jobs.map(j=>`<div class="list-item small" style="cursor:pointer" onclick="jobView('${j.id}')">🛠 ${fdate(j.date)} · ${esc(j.service)} · ${j.status}</div>`).join('')}${qs.map(q=>`<div class="list-item small" style="cursor:pointer" onclick="quoteForm('${q.id}')">📄 Quote ${fmt$(qTotal(q))} · ${q.status}</div>`).join('')}`:''}
- <div class="row mt"><button class="btn" onclick="saveLead('${id}')">Save</button><button class="btn g" onclick="saveLead('${id}',1);jobForm(null,'${id}','Site Visit / Walk-through')">Book site visit</button><button class="btn g" onclick="saveLead('${id}',1);quoteForm(null,'${id}')">Build quote</button><button class="btn g" onclick="saveLead('${id}',1);agentRun('outreach','${id}')">AI outreach</button><span class="sp"></span><button class="btn d s" onclick="if(confirm('Delete this lead?')){S.leads=S.leads.filter(x=>x.id!=='${id}');save();closeM();render()}">Delete</button></div>`);
+ <div class="row mt"><button class="btn" onclick="saveLead('${id}')">Save</button><button class="btn g" onclick="saveLead('${id}',1);jobForm(null,'${id}','Site Visit / Walk-through')">Book site visit</button><button class="btn g" onclick="saveLead('${id}',1);scopeView('${id}')">Scope & task list</button><button class="btn g" onclick="saveLead('${id}',1);quoteForm(null,'${id}')">Build quote</button><button class="btn g" onclick="saveLead('${id}',1);agentRun('outreach','${id}')">AI outreach</button><span class="sp"></span><button class="btn d s" onclick="if(confirm('Delete this lead?')){S.leads=S.leads.filter(x=>x.id!=='${id}');save();closeM();render()}">Delete</button></div>`);
 }
-function saveLead(id,quiet){const l=lead(id);['contact','title','phone','email','units','priority','nextFollow','website'].forEach(k=>{const e=$('#f_'+k);if(e)l[k]=k==='units'?+e.value:e.value.trim()});save();if(!quiet){toast('Saved');closeM();render()}}
+function saveLead(id,quiet){const l=lead(id);['contact','title','phone','email','priority','nextFollow','website'].forEach(k=>{const e=$('#f_'+k);if(e)l[k]=k==='units'?+e.value:e.value.trim()});save();if(!quiet){toast('Saved');closeM();render()}}
 function addNote(id){const v=$('#f_note').value.trim();if(!v)return;saveLead(id,1);const l=lead(id);l.notes.unshift({d:today(),t:v});if(l.status==='New')setStage(l,'Contacted');logA(`${l.company}: ${v.slice(0,60)}`);save();leadView(id);render()}
 function leadForm(){
  openM(`<div class="row"><h2 class="sp">New lead</h2><button class="btn g s" onclick="closeM()">✕</button></div>
  <div class="grid g2"><div><label>Company</label><input id="n_company"></div><div><label>Site / location name</label><input id="n_site"></div>
  <div><label>Segment</label><input id="n_segment" list="segl" placeholder="Refinery, Chemical, BRM / Modular Rental…"><datalist id="segl">${[...new Set(S.leads.map(l=>l.segment))].map(s=>`<option>${esc(s)}</option>`).join('')}</datalist></div>
  <div><label>City</label><input id="n_city"></div><div><label>State</label><select id="n_st"><option>PA</option><option>NJ</option><option>DE</option><option>MD</option></select></div>
- <div><label>Est. units</label><input id="n_units" type="number" value="4"></div>
+ <div><label>Est. field shelters (or vehicles)</label><input id="n_units" type="number" value="4"></div>
  <div><label>Latitude (optional)</label><input id="n_lat" placeholder="39.83"></div><div><label>Longitude (optional)</label><input id="n_lon" placeholder="-75.44"></div>
  <div><label>Contact</label><input id="n_contact"></div><div><label>Phone</label><input id="n_phone"></div></div>
  <p class="muted small">Tip: right-click a spot in Google Maps to copy lat/long — distance from ${HQ.zip} is calculated automatically.</p>
  <button class="btn mt" onclick="addLead()">Add lead</button>`);
 }
 function addLead(){const g=k=>$('#n_'+k).value.trim();if(!g('company'))return toast('Company required');const lat=parseFloat(g('lat')),lon=parseFloat(g('lon'));
- const l={id:uid('L'),company:g('company'),site:g('site'),segment:g('segment')||'Other',city:g('city'),st:g('st'),lat:lat||HQ.lat,lon:lon||HQ.lon,dist:(lat&&lon)?miles(lat,lon):0,units:+g('units')||0,priority:'B',website:'',status:'New',contact:g('contact'),title:'',phone:g('phone'),email:'',nextFollow:today(),notes:[],created:today()};
+ const l={id:uid('L'),company:g('company'),site:g('site'),segment:g('segment')||'Other',city:g('city'),st:g('st'),lat:lat||HQ.lat,lon:lon||HQ.lon,dist:(lat&&lon)?miles(lat,lon):0,units:+g('units')||0,counts:{},priority:'B',website:'',status:'New',contact:g('contact'),title:'',phone:g('phone'),email:'',nextFollow:today(),notes:[],created:today()};
  S.leads.push(l);logA(`New lead: ${l.company}`);save();closeM();go('crm');leadView(l.id)}
-function exportCSV(){const cols=['company','site','segment','city','st','dist','units','priority','status','contact','title','phone','email','website','nextFollow'];
- const csv=[cols.join(',')].concat(S.leads.map(l=>cols.map(c=>`"${String(l[c]??'').replace(/"/g,'""')}"`).join(','))).join('\n');
+function exportCSV(){const cols=['company','site','segment','city','st','dist','priority','status','contact','title','phone','email','website','nextFollow'];
+ const ex=['focus_type','focus_count','count_low','count_high','confirmed','confidence','per_visit','potential_per_year','potential_low','potential_high','estimate_basis'];
+ const csv=[cols.concat(ex).join(',')].concat(S.leads.map(l=>{const r=leadRev(l);return cols.map(c=>l[c]).concat([ftype(l)==='veh'?'vehicles':'field shelters',focusCount(l),l.est?.fs[0]??'',l.est?.fs[2]??'',hasActual(l)?'yes':'no',l.est?.conf||'',Math.round(r.visit),Math.round(r.annual),Math.round(r.lo),Math.round(r.hi),l.est?.basis||'']).map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')})).join('\n');
  dl('industry-reset-leads.csv',csv,'text/csv')}
 function dl(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click()}
 
+
+/* ============ SPACES, SCOPE & CLIENT TASK LIST ============ */
+function spacePanel(l){const r=leadRev(l),e=l.est,t=ftype(l),lbl=t==='veh'?'Vehicles':'Field shelters';
+ return `<div class="card mt" style="background:var(--p2)"><div class="row"><h3 class="sp">${lbl}</h3>${hasActual(l)?'<span class="pill ok">Confirmed count</span>':e?`<span class="pill ${e.conf==='Medium'?'pB':'pC'}">${e.conf} confidence estimate</span>`:''}${l.scope?.status?`<span class="pill">Scope: ${esc(l.scope.status)}</span>`:''}</div>
+ <div class="grid g3 mt"><div class="kpi"><div class="l">${hasActual(l)?'Confirmed':'Estimated'}</div><div class="v" style="font-size:28px">${focusCount(l)}${!hasActual(l)&&e?` <span class="small muted">(${e.fs[0]}–${e.fs[2]})</span>`:''}</div></div>
+ <div class="kpi"><div class="l">Per visit</div><div class="v" style="font-size:28px">${fmt$(r.visit)}</div></div>
+ <div class="kpi"><div class="l">Potential / yr ${OFFSEG.test(l.segment)?'(per-return)':'('+((l.scope&&l.scope.plan)||'Quarterly').toLowerCase()+')'}</div><div class="v ok" style="font-size:28px">${fmt$(r.annual)}</div>${!r.actual&&r.lo!==r.hi?`<div class="s">${fmt$(r.lo)} – ${fmt$(r.hi)}</div>`:''}</div></div>
+ ${!OFFSEG.test(l.segment)?`<div class="small muted">Annual-plan scenario (1 visit/yr): <b>${fmt$(r.visit)}</b> · Twice a year: <b>${fmt$(r.visit*2)}</b></div>`:''}
+ ${e?`<div class="small muted mt"><b>Basis:</b> ${esc(e.basis)}${OFFSEG.test(l.segment)?' Counts are BRM returns per year (one Reset each).':''}</div>`:''}
+ <label>Actual count from site survey / client</label><div class="grid g3">${IR.TYPES.filter(ty=>ty.focus?ty.k===t:true).map(ty=>`<div><div class="small muted">${esc(ty.short)}${ty.focus?' ★':''}</div><input type="number" min="0" data-cnt="${ty.k}" value="${l.counts[ty.k]||''}" placeholder="${ty.k===t&&e?e.fs[1]:0}" onchange="setCount('${l.id}','${ty.k}',this.value)"></div>`).join('')}</div>
+ <p class="small muted" style="margin:6px 0 0">★ = core service. Other spaces are optional extras, not the focus.</p></div>`}
+function setCount(id,k,v){const l=lead(id);v=Math.max(0,parseInt(v)||0);if(v)l.counts[k]=v;else delete l.counts[k];syncUnits(l);save();leadView(id);render()}
+function scopeOf(l){const t=ftype(l),sc=l.scope||{};return {sel:sc.sel||IR.coreSel(),plan:sc.plan||'Quarterly',counts:hasActual(l)?{...l.counts}:{[t]:focusCount(l)}}}
+function scopeView(id){const l=lead(id);const sc=scopeOf(l);window._sc={id,...sc,sel:new Set(sc.sel)};drawScope()}
+function drawScope(){const c=window._sc,l=lead(c.id),t=ftype(l),set=t==='veh'?'veh':'space';const v=IR.visitTotal(c.counts,[...c.sel]);
+ const types=IR.TYPES.filter(ty=>ty.set===set&&(ty.k===t||set==='space'));
+ openM(`<div class="row"><h2 class="sp">Scope & task list</h2><button class="btn g s" onclick="closeM()">✕</button></div>
+ <div class="muted">${esc(l.company)} — ${esc(l.site)}</div>
+ <div class="small mt" style="border-left:3px solid var(--or);padding-left:10px">${esc(IR.SUPPLEMENT)}</div>
+ <label>Spaces to service</label><div class="grid g3">${types.map(ty=>`<div><div class="small muted">${esc(ty.short)}${ty.focus?' ★':''}${ty.m!==1?` (${ty.m}×)`:''}</div><input type="number" min="0" value="${c.counts[ty.k]||0}" onchange="_sc.counts['${ty.k}']=Math.max(0,+this.value||0);drawScope()"></div>`).join('')}</div>
+ <label>Tasks — the client can keep or remove each one</label>
+ ${['Included','Add-ons'].map(g=>`<div class="small muted mt" style="text-transform:uppercase;letter-spacing:.06em">${g}</div>${IR.TASKS.filter(tk=>tk.set===set&&(g==='Included'?tk.core:!tk.core)).map(tk=>`<div class="chk ${c.sel.has(tk.id)||tk.lock?'':'done'}"><input type="checkbox" ${c.sel.has(tk.id)||tk.lock?'checked':''} ${tk.lock?'disabled':''} onchange="this.checked?_sc.sel.add('${tk.id}'):_sc.sel.delete('${tk.id}');drawScope()"><span class="sp"><b>${esc(tk.name)}</b>${tk.lock?' <span class="pill pA">always</span>':''}<br><span class="muted small">${esc(tk.d)}</span></span><span class="small muted">${tk.core?'':'+'}${fmt$(tk.p)}</span></div>`).join('')}`).join('')}
+ <div class="grid g2 mt"><div><label>Frequency</label><select onchange="_sc.plan=this.value;drawScope()">${Object.keys(IR.PLANS).map(p=>`<option ${c.plan===p?'selected':''}>${p}</option>`).join('')}</select></div>
+ <div class="card"><div class="row"><span class="muted">Per visit</span><span class="sp"></span><b>${fmt$(v.total)}</b></div><div class="row small"><span class="muted">Per year</span><span class="sp"></span><b class="ok">${fmt$(v.total*(OFFSEG.test(l.segment)?1:IR.PLANS[c.plan]))}</b></div></div></div>
+ <div class="row mt"><button class="btn" onclick="saveScope();toast('Scope saved')">Save</button><button class="btn g" onclick="saveScope();copyLink()">Copy client link</button>${l.phone?`<button class="btn g" onclick="saveScope();sendLink('sms')">Text link</button>`:''}${l.email?`<button class="btn g" onclick="saveScope();sendLink('email')">Email link</button>`:''}<button class="btn g" onclick="saveScope();quoteForm(null,'${l.id}')">Build quote from scope</button><a class="btn g" target="_blank" href="${clientLink(l,c)}">Preview</a></div>
+ <label>Paste the client's reply (contains IRSCOPE: code)</label><div class="row"><textarea id="imp" style="min-height:50px" placeholder="Paste the whole email or text…"></textarea><button class="btn s" onclick="importResp($('#imp').value)">Import</button></div>`)}
+function saveScope(status){const c=window._sc,l=lead(c.id);l.scope={...(l.scope||{}),sel:[...c.sel],plan:c.plan,status:status||l.scope?.status||'Draft'};
+ const t=ftype(l);if(IR.countTotal(c.counts)!==(hasActual(l)?IR.countTotal(l.counts):focusCount(l))||hasActual(l))l.counts=Object.fromEntries(Object.entries(c.counts).filter(([k,v])=>+v>0));syncUnits(l);save();render()}
+function clientLink(l,c){c=c||scopeOf(l);const t=ftype(l);return location.origin+'/scope/?d='+IR.enc({lid:l.id,co:l.company,site:l.site,counts:c.counts,sel:[...c.sel],plan:c.plan,types:[t],est:!hasActual(l),by:S.settings.owner+', Industry Reset',ph:S.settings.phone,em:S.settings.email})}
+function markSent(l){l.scope=l.scope||{};l.scope.status='Sent to client';l.scope.sentAt=today();l.notes.unshift({d:today(),t:'Scope link sent to client'});if(['New','Contacted'].includes(l.status))setStage(l,'Contacted');if(!l.nextFollow||l.nextFollow<today())l.nextFollow=addDays(today(),3);logA(`Scope sent — ${l.company}`);save()}
+function copyLink(){const l=lead(window._sc.id),u=clientLink(l);navigator.clipboard.writeText(u).then(()=>toast('Client link copied'),()=>prompt('Copy this link:',u));markSent(l)}
+function sendLink(how){const l=lead(window._sc.id),u=clientLink(l),first=l.contact?l.contact.split(' ')[0]:'there';
+ const msg=`Hi ${first}, here's the field shelter Reset scope for ${l.site}. Confirm your shelter count and uncheck anything you don't need — the price updates as you go. Send it back when it looks right and I'll turn it into a quote: ${u}\n— ${S.settings.owner}, Industry Reset ${S.settings.phone}`;
+ markSent(l);location.href=how==='sms'?`sms:${l.phone}?&body=${encodeURIComponent(msg)}`:`mailto:${l.email}?subject=${encodeURIComponent('Your field shelter Reset scope — '+l.site)}&body=${encodeURIComponent(msg)}`}
+function importResp(txt){const m=String(txt||'').match(/IRSCOPE:([A-Za-z0-9_\-]+)/);if(!m)return toast('No IRSCOPE code found');let r;try{r=IR.dec(m[1])}catch(e){return toast('Code is damaged — ask them to resend')}
+ const l=lead(r.lid)||S.leads.find(x=>x.company===r.co&&x.site===r.site);if(!l)return toast('No matching lead for '+(r.co||'this code'));
+ l.counts=Object.fromEntries(Object.entries(r.counts||{}).filter(([k,v])=>+v>0));l.scope={sel:r.sel,plan:r.plan,status:'Client approved',approvedBy:r.name,approvedAt:r.at,notes:r.notes};
+ if(r.name&&!l.contact){l.contact=r.name;l.title=r.title||l.title}if(r.email&&!l.email)l.email=r.email;if(r.phone&&!l.phone)l.phone=r.phone;
+ syncUnits(l);l.notes.unshift({d:today(),t:`Client approved scope: ${r.name}${r.title?' ('+r.title+')':''} — ${focusCount(l)} ${ftype(l)==='veh'?'vehicles':'field shelters'}, ${r.plan}${r.notes?'. Notes: '+r.notes:''}`});
+ if(['New','Contacted','Site Visit'].includes(l.status))setStage(l,'Site Visit');logA(`Scope approved by client — ${l.company}`);save();closeM();render();leadView(l.id);toast('Imported — build the quote next')}
+function importPrompt(){openM(`<div class="row"><h2 class="sp">Import client scope</h2><button class="btn g s" onclick="closeM()">✕</button></div><p class="muted small">Paste the email or text the client sent back. It includes a line starting with IRSCOPE:</p><textarea id="imp" style="min-height:140px"></textarea><button class="btn mt" onclick="importResp($('#imp').value)">Import</button>`)}
+function scopeQuote(l){const c=scopeOf(l),v=IR.visitTotal(c.counts,c.sel);
+ return {leadId:l.id,plan:c.plan,discount:0,scope:{sel:c.sel},items:v.lines.map(x=>({desc:`${x.name} — Reset per visit`,qty:x.qty,rate:x.rate})),status:'Draft',date:today(),terms:'Scope as approved (task list attached). '+IR.SUPPLEMENT+' First quarter paid upfront. Cancel anytime after the first quarter. Photo report every visit. Scheduled around shifts and turnarounds.'}}
 /* ============ SCHEDULE ============ */
 function weekStart(){const d=new Date();d.setDate(d.getDate()-d.getDay()+wk*7);return d.toISOString().slice(0,10)}
 function vSched(){
@@ -290,7 +357,7 @@ function vSched(){
 
 /* ============ JOBS ============ */
 function jobForm(id,leadId,service,date){
- const j=id?S.jobs.find(x=>x.id===id):{leadId:leadId||'',service:service||'BRM Reset',date:date||addDays(today(),1),start:'07:00',hours:4,units:lead(leadId)?.units||1,crew:S.crew.filter(c=>c.active).slice(0,1).map(c=>c.id),price:0,notes:'',access:''};
+ const j=id?S.jobs.find(x=>x.id===id):{leadId:leadId||'',service:service||'BRM Reset',date:date||addDays(today(),1),start:'07:00',hours:4,units:lead(leadId)?focusCount(lead(leadId))||1:1,crew:S.crew.filter(c=>c.active).slice(0,1).map(c=>c.id),price:0,notes:'',access:''};
  const accounts=[...S.leads].sort((a,b)=>(a.status==='Won'?0:1)-(b.status==='Won'?0:1)||a.company.localeCompare(b.company));
  openM(`<div class="row"><h2 class="sp">${id?'Edit job':'New job'}</h2><button class="btn g s" onclick="closeM()">✕</button></div>
  <label>Account / site</label><select id="j_lead"><option value="">—</option>${accounts.map(l=>`<option value="${l.id}" ${j.leadId===l.id?'selected':''}>${l.status==='Won'?'★ ':''}${esc(l.company)} — ${esc(l.site)}</option>`).join('')}</select>
@@ -313,7 +380,7 @@ function saveJob(id){
   const l=lead(data.leadId);if(l&&svc.startsWith('Site')&&['New','Contacted'].includes(l.status))setStage(l,'Site Visit');logA(`Scheduled ${svc} — ${l?.company||''} ${fdate(data.date)}`)}
  save();closeM();toast('Job saved');render();
 }
-const jobPrice=j=>j.price||(j.service.startsWith('Site')?0:(j.units||0)*S.settings.rate);
+const jobPrice=j=>j.price||(j.service.startsWith('Site')?0:(j.units||0)*IR.unitPrice(j.service==='Fleet Reset'?'veh':'sh',lead(j.leadId)?.scope?.sel));
 function jobView(id){
  const j=S.jobs.find(x=>x.id===id);if(!j)return;const l=lead(j.leadId);const done=j.checklist.filter(c=>c.done).length;
  openM(`<div class="row"><h2 class="sp">${esc(j.service)}</h2><button class="btn g s" onclick="closeM()">✕</button></div>
@@ -340,7 +407,7 @@ function vJobs(){
 const qTotal=q=>q.items.reduce((a,i)=>a+(+i.qty||0)*(+i.rate||0),0)*(1-(+q.discount||0)/100);
 function quoteForm(id,leadId){
  const r=S.settings.rate,l=lead(leadId);
- const q=id?S.quotes.find(x=>x.id===id):{leadId:leadId||'',plan:'Quarterly',discount:(l?.units||0)>=10?10:0,items:[{desc:'BRM / shelter Reset — per unit, per quarter',qty:l?.units||1,rate:r},{desc:'Quarters (first quarter paid upfront)',qty:4,rate:0}],status:'Draft',date:today(),terms:'First quarter paid upfront. Cancel anytime after the first quarter. Photo report every visit. Scheduling around shifts and turnarounds.'};
+ const q=id?S.quotes.find(x=>x.id===id):(l&&(l.scope||hasActual(l))?scopeQuote(l):{leadId:leadId||'',plan:'Quarterly',discount:0,items:[{desc:l&&ftype(l)==='veh'?'Fleet Reset — per vehicle, per visit':'Field shelter Reset — per shelter, per visit',qty:l?focusCount(l)||1:1,rate:IR.unitPrice(l?ftype(l):'sh')}],status:'Draft',date:today(),terms:'First quarter paid upfront. Cancel anytime after the first quarter. Photo report every visit. Scheduling around shifts and turnarounds. '+IR.SUPPLEMENT});
  window._q=JSON.parse(JSON.stringify(q));drawQuote(id);
 }
 function drawQuote(id){const q=window._q;
@@ -354,14 +421,14 @@ function drawQuote(id){const q=window._q;
  ${q.items.map((it,i)=>`<div class="row" style="margin-bottom:6px"><input style="flex:3" value="${esc(it.desc)}" onchange="_q.items[${i}].desc=this.value"><input style="flex:1" type="number" value="${it.qty}" onchange="_q.items[${i}].qty=+this.value;drawQuote(${id?`'${id}'`:'null'})"><input style="flex:1" type="number" value="${it.rate}" onchange="_q.items[${i}].rate=+this.value;drawQuote(${id?`'${id}'`:'null'})"><button class="btn d s" onclick="_q.items.splice(${i},1);drawQuote(${id?`'${id}'`:'null'})">✕</button></div>`).join('')}
  <div class="row"><button class="btn g s" onclick="_q.items.push({desc:'Blind exchange — per unit',qty:1,rate:150});drawQuote(${id?`'${id}'`:'null'})">+ Blind exchange</button><button class="btn g s" onclick="_q.items.push({desc:'Control room Reset',qty:1,rate:${S.settings.rate*2}});drawQuote(${id?`'${id}'`:'null'})">+ Control room</button><button class="btn g s" onclick="_q.items.push({desc:'',qty:1,rate:0});drawQuote(${id?`'${id}'`:'null'})">+ Custom</button></div>
  <div class="card mt"><div class="row"><span class="muted">Per visit</span><span class="sp"></span><b>${fmt$(qTotal(q))}</b></div>
- <div class="row small muted"><span>Annual contract value (${q.plan})</span><span class="sp"></span><b class="ok">${fmt$(qTotal(q)*({Quarterly:4,'Twice a year':2,Annual:1,'One-time':1}[q.plan]))}</b></div>
+ <div class="row small muted"><span>Annual contract value (${q.plan})</span><span class="sp"></span><b class="ok">${fmt$(qTotal(q)*IR.PLANS[q.plan])}</b></div>
  <div class="row small muted"><span>Upfront (first visit / deposit)</span><span class="sp"></span><b>${fmt$(qTotal(q))}</b></div></div>
  <label>Terms</label><textarea onchange="_q.terms=this.value">${esc(q.terms)}</textarea>
  <div class="row mt"><button class="btn" onclick="saveQuote(${id?`'${id}'`:'null'})">Save quote</button><button class="btn g" onclick="saveQuote(${id?`'${id}'`:'null'},1)">Print / PDF</button>${id?`<span class="sp"></span><button class="btn d s" onclick="if(confirm('Delete?')){S.quotes=S.quotes.filter(x=>x.id!=='${id}');save();closeM();render()}">Delete</button>`:''}</div>`);
 }
 function saveQuote(id,print){const q=window._q;
  if(id){Object.assign(S.quotes.find(x=>x.id===id),q)}else{q.id=uid('Q');q.num='Q-'+(1001+S.quotes.length);S.quotes.push(q);id=q.id;logA(`Quote ${q.num} for ${lead(q.leadId)?.company||''}`)}
- const l=lead(q.leadId);if(l){if(q.status==='Sent'&&['New','Contacted','Site Visit'].includes(l.status))setStage(l,'Quoted');if(q.status==='Accepted'&&l.status!=='Won'){setStage(l,'Won');l.units=q.items[0]?.qty||l.units}}
+ const l=lead(q.leadId);if(l){if(q.status==='Accepted'&&!hasActual(l)&&q.items[0]){l.counts[ftype(l)]=+q.items[0].qty||0;syncUnits(l)}if(q.status==='Sent'&&['New','Contacted','Site Visit'].includes(l.status))setStage(l,'Quoted');if(q.status==='Accepted'&&l.status!=='Won')setStage(l,'Won')}
  save();closeM();render();toast('Quote saved');if(print)printDoc('quote',S.quotes.find(x=>x.id===id));
 }
 function invoiceJob(jid){const j=S.jobs.find(x=>x.id===jid);
@@ -370,7 +437,7 @@ function invoiceJob(jid){const j=S.jobs.find(x=>x.id===jid);
 function vMoney(){
  const unpaid=S.invoices.filter(i=>i.status!=='Paid'),over=unpaid.filter(i=>i.due<today());
  $('#main').innerHTML=hdr('Quotes <span>&</span> Invoices',`<button class="btn g" onclick="invForm()">+ Invoice</button><button class="btn" onclick="quoteForm()">+ Quote</button>`)+`
- <div class="grid g4 mb"><div class="card kpi"><div class="l">Quotes out</div><div class="v">${fmt$(S.quotes.filter(q=>q.status==='Sent').reduce((a,q)=>a+qTotal(q)*4,0))}</div><div class="s">annualized, status Sent</div></div>
+ <div class="grid g4 mb"><div class="card kpi"><div class="l">Quotes out</div><div class="v">${fmt$(S.quotes.filter(q=>q.status==='Sent').reduce((a,q)=>a+qTotal(q)*IR.PLANS[q.plan],0))}</div><div class="s">annualized, status Sent</div></div>
  <div class="card kpi"><div class="l">Accepted</div><div class="v ok">${S.quotes.filter(q=>q.status==='Accepted').length}</div><div class="s">of ${S.quotes.length} quotes</div></div>
  <div class="card kpi"><div class="l">Outstanding</div><div class="v">${fmt$(unpaid.reduce((a,i)=>a+ +i.amount,0))}</div><div class="s">${unpaid.length} invoices</div></div>
  <div class="card kpi"><div class="l">Overdue</div><div class="v ${over.length?'bad':''}">${fmt$(over.reduce((a,i)=>a+ +i.amount,0))}</div><div class="s">${over.length} past due</div></div></div>
@@ -389,7 +456,7 @@ function printDoc(type,d){const l=lead(d.leadId)||{};const s=S.settings;
  <div style="display:flex;justify-content:space-between;align-items:center"><div><img src="/img/logo.png" style="height:60px"><h1>INDUSTRY <span class="o">RESET</span></h1><div>${esc(s.phone)} · industryreset.com${s.email?' · '+esc(s.email):''}</div></div><div class="r"><h2>${type==='quote'?'QUOTE':'INVOICE'}</h2><div>${d.num}</div><div>${fdate(d.date||d.issued)}</div>${type==='invoice'?`<div>Due ${fdate(d.due)}</div>`:''}</div></div>
  <p><b>Prepared for:</b><br>${esc(l.company||'')}<br>${esc(l.site||'')}<br>${esc(l.city||'')}, ${esc(l.st||'')}${l.contact?'<br>Attn: '+esc(l.contact):''}</p>
  <table><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>${rows}<tr><th colspan=3 class="r">${type==='quote'?'Per visit total':'Total due'}</th><th>${fmt$(total)}</th></tr></table>
- ${type==='quote'?`<p><b>Plan:</b> ${esc(d.plan)}</p><p>${esc(d.terms)}</p><p style="margin-top:50px">Accepted by: ______________________ Date: __________</p>`:`<p>Thank you for your business.</p>`}
+ ${type==='quote'&&d.scope?`<h3>Scope — tasks included each visit</h3><ul>${IR.TASKS.filter(t=>d.scope.sel.includes(t.id)||t.lock).filter(t=>d.items.some(i=>/vehicle/i.test(i.desc))?true:t.set==='space').map(t=>`<li><b>${esc(t.name)}</b> — ${esc(t.d)}</li>`).join('')}</ul>`:''}${type==='quote'?`<p><i>${esc(IR.SUPPLEMENT)}</i></p><p><b>Plan:</b> ${esc(d.plan)}</p><p>${esc(d.terms)}</p><p style="margin-top:50px">Accepted by: ______________________ Date: __________</p>`:`<p>Thank you for your business.</p>`}
  <script>setTimeout(()=>print(),400)<\/script></body></html>`);w.document.close()}
 
 /* ============ REVIEWS ============ */
@@ -446,7 +513,7 @@ function vAgents(){
  <div class="grid g3">${AGENTS.map(a=>`<div class="card agent"><h3>${a[1]}</h3><p class="muted small">${a[2]}</p>${a[3]?`<select id="ag_${a[0]}" class="mt"><option value="">Pick a lead…</option>${S.leads.slice().sort((x,y)=>x.company.localeCompare(y.company)).map(l=>`<option value="${l.id}">${esc(l.company)} — ${esc(l.site)}</option>`).join('')}</select>`:''}<button class="btn mt" onclick="agentRun('${a[0]}',${a[3]?`$('#ag_${a[0]}').value`:'null'})">Run</button></div>`).join('')}</div>`;
 }
 function segAngle(l){const s=l.segment;
- if(/Refinery|Terminal|Chemical/.test(s))return'Your operators eat, work and rest in the same steel box shift after shift — janitorial wipe-downs never reach the seat foam, the HVAC grilles or the smell. That is exactly what we reset.';
+ if(/Refinery|Terminal|Chemical/.test(s))return'Your field operator shelters take the worst of it — oil film, catalyst and coke dust, sulfur and boot-traffic grime, carried in shift after shift. Janitorial wipe-downs never reach the seat foam, the HVAC grilles or the smell. That is exactly what we reset.';
  if(/Power|Utility/.test(s))return'Control rooms and outage trailers run 24/7 and it shows — seat foam, HVAC returns and odor that a nightly wipe-down never touches. We use low-moisture methods that are safe around consoles.';
  if(/Rental|Modular/.test(s))return'Every BRM that comes back from a turnaround needs to go out again looking — and smelling — new. We can reset units between deployments so your next customer gets a clean box on day one.';
  if(/Contractor/.test(s))return'Your crews live in rented BRMs during turnarounds. We reset them mid-job and before demob, so you hand the unit back clean and your people work in a space that doesn\'t smell like week three.';
@@ -457,7 +524,7 @@ function agentRun(type,leadId,jobId){
  const s=S.settings,l=lead(leadId),j=jobId?S.jobs.find(x=>x.id===jobId):null;let title='',out='',actions='';
  if((type==='outreach'||type==='review')&&!l&&!j)return toast('Pick a lead first');
  if(type==='outreach'){title='Outreach — '+l.company;
-  out=`Subject: Shelter & BRM deep cleaning for ${l.company} — from an operator\n\nHi ${l.contact?l.contact.split(' ')[0]:'there'},\n\nI'm ${s.owner}, founder of Industry Reset — and a refinery shift worker myself, based in Upper Chichester${l.dist&&l.dist<=5?', a few minutes from your site':l.dist?', about '+l.dist+' miles from your site':', in the middle of the Delaware Valley refinery corridor'}.\n\n${segAngle(l)}\n\nWhat a Reset includes:\n• Dry-steam sanitizing, walls to ceiling\n• Heated extraction on chairs and seating\n• HVAC grilles and returns, enzyme odor treatment\n• Photo report every visit, scheduled around shifts and turnarounds\n\nPricing is simple: ${fmt$(s.rate)} per unit, per quarter${(l.units||0)>=10?', with volume pricing for 10+ units':''}. Start with one quarter — cancel anytime after.\n\nCould I do a 20-minute walk-through of ${l.units?'a few of your '+l.units+' estimated units':'one of your units'} next week?\n\n${s.owner}\nIndustry Reset · ${s.phone}\nindustryreset.com`;
+  out=`Subject: Field shelter deep cleaning for ${l.company} — from an operator\n\nHi ${l.contact?l.contact.split(' ')[0]:'there'},\n\nI'm ${s.owner}, founder of Industry Reset — and a refinery shift worker myself, based in Upper Chichester${l.dist&&l.dist<=5?', a few minutes from your site':l.dist?', about '+l.dist+' miles from your site':', in the middle of the Delaware Valley refinery corridor'}.\n\n${segAngle(l)}\n\nWe don't replace your cleaning crew — we pick up where they leave off, with the deep field-contamination work they can't reach.\n\nWhat a Reset includes:\n• Dry-steam degreasing, walls to ceiling\n• HEPA removal of catalyst, coke and sulfur dust\n• Entry & floor decon, heated extraction on seating\n• HVAC grilles and returns, hydrocarbon & sulfur odor treatment\n• Photo report every visit, scheduled around shifts and turnarounds\n\nPricing is simple: ${fmt$(IR.unitPrice('sh'))} per shelter, per visit — and you can remove any task you don't need. Start with one quarter — cancel anytime after.\n\nCould I walk ${focusCount(l)>1?'a couple of your field shelters':'one of your field shelters'} with you next week? It takes 20 minutes, and I'll send a scope you can trim line by line.\n\n${s.owner}\nIndustry Reset · ${s.phone}\nindustryreset.com`;
   actions=`${l.email?`<a class="btn s" href="mailto:${esc(l.email)}?subject=${encodeURIComponent(out.split('\n')[0].replace('Subject: ',''))}&body=${encodeURIComponent(out.split('\n').slice(2).join('\n'))}">Open in email</a>`:'<span class="muted small">Add an email on the lead to send directly.</span>'}<button class="btn g s" onclick="const l=lead('${l.id}');l.notes.unshift({d:today(),t:'Outreach email sent'});setStage(l,'Contacted');l.nextFollow=addDays(today(),4);save();toast('Logged — follow-up in 4 days');render()">Mark sent</button>`}
  if(type==='followup'){title='Follow-ups due';const due=S.leads.filter(x=>x.nextFollow&&x.nextFollow<=today()&&!['Won','Lost'].includes(x.status));
   out=due.length?due.map(x=>`— ${x.company} (${x.status}, due ${fdate(x.nextFollow)})\n${x.status==='Quoted'?`Hi ${x.contact||'there'}, checking in on the Reset quote for ${x.site}. Happy to adjust scope or start with a smaller set of units this quarter. Want me to hold a date?`:x.status==='Site Visit'?`Hi ${x.contact||'there'}, thanks for the walk-through at ${x.site}. I'm putting the quote together now — anything you want included, like the blind exchange or control rooms?`:`Hi ${x.contact||'there'}, following up on my note about resetting the shelters at ${x.site}. Is there a better person for me to talk to about site services?`}\n— ${s.owner}, Industry Reset ${s.phone}`).join('\n\n'):'Nothing due today. Set follow-up dates on leads (CRM → open a lead) and they show up here.'}
@@ -468,13 +535,13 @@ function agentRun(type,leadId,jobId){
   out=`INDUSTRY RESET — VISIT REPORT\n${L?.company||''} · ${L?.site||''}\nDate: ${fdate(j.date)} · Service: ${j.service} · Units: ${j.units}\n\nWORK COMPLETED\n${j.checklist.filter(c=>c.done).map(c=>'✔ '+c.t).join('\n')||'(check off the job checklist first)'}\n${j.checklist.some(c=>!c.done)?'\nNOT COMPLETED / DEFERRED\n'+j.checklist.filter(c=>!c.done).map(c=>'• '+c.t).join('\n')+'\n':''}\nTECHNICIAN NOTES\n${j.report||j.notes||'—'}\n\nNEXT VISIT\nRecommended: ${fdate(addDays(j.date,91))} (quarterly program)\n\nBefore/after photos attached.\n${s.owner} · ${s.phone}`;
   actions=`<button class="btn g s" onclick="const j=S.jobs.find(x=>x.id==='${j.id}');j.report=$('#agout').innerText;save();toast('Saved to job')">Save to job</button>`}
  if(type==='brief'){title='Weekly brief';const open=S.leads.filter(x=>!['Won','Lost'].includes(x.status));const wkJ=S.jobs.filter(x=>x.date>=today()&&x.date<=addDays(today(),7));const unp=S.invoices.filter(i=>i.status!=='Paid');
-  const moves=[];const nc=S.leads.filter(x=>x.status==='New'&&x.priority==='A').sort((a,b)=>a.dist-b.dist);if(nc[0])moves.push(`Contact ${nc[0].company} (${nc[0].site}, ${nc[0].dist} mi) — closest untouched A-lead.`);
+  const moves=[];const nc=S.leads.filter(x=>x.status==='New'&&ftype(x)==='sh'&&focusCount(x)>0).sort((a,b)=>leadRev(b).annual-leadRev(a).annual);if(nc[0])moves.push(`Contact ${nc[0].company} (${nc[0].site}) — biggest untouched target, ~${focusCount(nc[0])} field shelters, ${k$(leadRev(nc[0]).annual)}/yr.`);
   const dq=S.leads.filter(x=>x.nextFollow&&x.nextFollow<=today()&&!['Won','Lost'].includes(x.status));if(dq.length)moves.push(`Clear ${dq.length} overdue follow-up(s) — run Follow-up Nudger.`);
-  const qd=S.quotes.filter(q=>q.status==='Sent');if(qd.length)moves.push(`Chase ${qd.length} open quote(s) worth ${fmt$(qd.reduce((a,q)=>a+qTotal(q)*4,0))}/yr.`);
+  const qd=S.quotes.filter(q=>q.status==='Sent');if(qd.length)moves.push(`Chase ${qd.length} open quote(s) worth ${fmt$(qd.reduce((a,q)=>a+qTotal(q)*IR.PLANS[q.plan],0))}/yr.`);
   if(unp.length)moves.push(`Collect ${fmt$(unp.reduce((a,i)=>a+ +i.amount,0))} outstanding.`);
   const nr=S.jobs.filter(x=>['Complete','Invoiced'].includes(x.status)&&!S.reviews.find(r=>r.jobId===x.id));if(nr.length)moves.push(`Request ${nr.length} review(s) from completed jobs.`);
   if(!S.leads.some(x=>x.status==='Won'))moves.push('Land client #1: one quarter upfront funds the equipment. Focus on the ≤5-mile A-leads.');
-  out=`INDUSTRY RESET — WEEKLY BRIEF (${fdate(today())})\n\nPIPELINE\n${STAGES.map(st=>`${st}: ${S.leads.filter(x=>x.status===st).length}`).join(' · ')}\nOpen annual value: ${fmt$(open.reduce((a,x)=>a+x.units*s.rate*4,0))}\n\nTHIS WEEK\n${wkJ.length} jobs scheduled${wkJ.length?':\n'+wkJ.map(x=>`• ${fdate(x.date)} ${x.service} — ${lead(x.leadId)?.company||''}`).join('\n'):''}\n\nCASH\nOutstanding: ${fmt$(unp.reduce((a,i)=>a+ +i.amount,0))} · Paid this month: ${fmt$(S.invoices.filter(i=>i.status==='Paid'&&(i.paid||'').startsWith(today().slice(0,7))).reduce((a,i)=>a+ +i.amount,0))}\n\nTOP MOVES\n${moves.slice(0,5).map((m,i)=>`${i+1}. ${m}`).join('\n')}`}
+  out=`INDUSTRY RESET — WEEKLY BRIEF (${fdate(today())})\n\nPIPELINE\n${STAGES.map(st=>`${st}: ${S.leads.filter(x=>x.status===st).length}`).join(' · ')}\nField-shelter potential / yr (open leads): ${fmt$(open.filter(x=>ftype(x)==='sh').reduce((a,x)=>a+leadRev(x).annual,0))}\n\nTHIS WEEK\n${wkJ.length} jobs scheduled${wkJ.length?':\n'+wkJ.map(x=>`• ${fdate(x.date)} ${x.service} — ${lead(x.leadId)?.company||''}`).join('\n'):''}\n\nCASH\nOutstanding: ${fmt$(unp.reduce((a,i)=>a+ +i.amount,0))} · Paid this month: ${fmt$(S.invoices.filter(i=>i.status==='Paid'&&(i.paid||'').startsWith(today().slice(0,7))).reduce((a,i)=>a+ +i.amount,0))}\n\nTOP MOVES\n${moves.slice(0,5).map((m,i)=>`${i+1}. ${m}`).join('\n')}`}
  if(type==='route'){title='Route planner';const open=S.leads.filter(x=>['New','Contacted'].includes(x.status));const zones={};
   open.forEach(x=>{const z=x.st==='NJ'?'South Jersey river corridor':x.st==='DE'?(x.lat<39.65?'Delaware City / south':'Wilmington / New Castle'):x.dist<=8?'Home base: Marcus Hook / Chester / Trainer':x.lat>39.98?'North: Philly NE / Montco / Bucks':'Philadelphia south / airport';(zones[z]=zones[z]||[]).push(x)});
   out=Object.entries(zones).sort((a,b)=>b[1].length-a[1].length).map(([z,ls])=>`${z.toUpperCase()} (${ls.length})\n${ls.sort((a,b)=>a.priority.localeCompare(b.priority)).map(x=>`  [${x.priority}] ${x.company} — ${x.site} (${x.dist} mi)`).join('\n')}`).join('\n\n')+'\n\nBlock one off-rotation day per zone and stack 3–4 drop-ins or walk-throughs.'}

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Scope of Work — Industry Reset</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--or:#FF5A00;--ink:#0A0A0B;--p:#141518;--p2:#1b1d21;--line:#26292e;--t:#EEEFF1;--m:#A3A8AF;--ok:#2ecc71}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:var(--t);font-family:Barlow,system-ui,sans-serif;font-size:15px}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;margin:0;letter-spacing:.02em}
+.wrap{max-width:860px;margin:0 auto;padding:22px 16px 140px}
+header{display:flex;gap:14px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}
+header img{width:56px}.brand{font-family:'Russo One';font-size:20px;letter-spacing:.04em}.brand b{color:var(--or);font-weight:400}
+h1{font-size:30px;text-transform:uppercase}.muted{color:var(--m)}.small{font-size:13px}
+.card{background:var(--p);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+.step{display:inline-block;background:var(--or);color:#000;font-weight:700;border-radius:99px;width:24px;height:24px;text-align:center;line-height:24px;margin-right:8px;font-size:13px}
+.cnt{display:grid;grid-template-columns:1fr 110px;gap:8px 12px;align-items:center;margin-top:10px}
+input,select,textarea{font:inherit;color:var(--t);background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)}
+label.l{display:block;font-size:12px;color:var(--m);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px}
+.task{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start;cursor:pointer}
+.task:last-child{border:0}.task input{width:20px;height:20px;margin-top:2px;accent-color:var(--or);flex:none}
+.task .n{font-weight:600}.task .d{color:var(--m);font-size:13px}.task .pr{margin-left:auto;white-space:nowrap;color:var(--m);font-size:13px}
+.task.off .n{color:var(--m);text-decoration:line-through}.lock{font-size:11px;color:var(--or);border:1px solid rgba(255,90,0,.4);border-radius:99px;padding:1px 7px;margin-left:6px}
+h3.g{font-size:16px;text-transform:uppercase;color:var(--or);margin-top:14px}
+.sum{position:fixed;left:0;right:0;bottom:0;background:var(--p);border-top:1px solid var(--line);padding:12px 16px}
+.sum .in{max-width:860px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.big{font-family:'Barlow Condensed';font-size:28px;font-weight:700}.sp{flex:1}
+.btn{background:var(--or);color:#000;border:0;border-radius:8px;padding:11px 16px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;font-size:15px}
+.btn.g{background:var(--p2);color:var(--t);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;margin-top:8px}td{padding:6px 4px;border-bottom:1px solid var(--line);font-size:14px}td.r{text-align:right}
+#err{display:none}
+@media print{body{background:#fff;color:#111}.card{background:#fff;border-color:#ccc}.sum,.noprint{display:none}.muted,.task .d,.task .pr{color:#555}input,select,textarea{background:#fff;color:#111;border-color:#ccc}.task.off{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header><img src="/img/logo.png" alt="Industry Reset"><div><div class="brand">INDUSTRY <b>RESET</b></div><div class="muted small">Field shelter deep cleaning · we supplement your crew · operator-founded</div></div></header>
+ <div id="err" class="card"><h2>This scope link is incomplete</h2><p class="muted">Please ask Industry Reset to resend your link, or text <a style="color:var(--or)" href="sms:+14848365191">484-836-5191</a>.</p></div>
+ <div id="app"></div>
+</div>
+<div class="sum noprint" id="sum"></div>
+<script src="/control-room/catalog.js"></script>
+<script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s), fmt=n=>'$'+Math.round(n).toLocaleString();
+let D;
+try{ D=IR.dec(new URLSearchParams(location.search).get('d')); if(!D||!D.co) throw 0; }catch(e){ $('#err').style.display='block'; $('#sum').style.display='none'; }
+if(D){
+ D.counts=D.counts||{}; D.sel=new Set(D.sel||IR.coreSel()); D.plan=D.plan||'Quarterly';
+ const prim=IR.TYPES.filter(t=>(D.types||['sh']).includes(t.k)), other=IR.TYPES.filter(t=>!prim.includes(t)&&t.set==='space');
+ const types=prim.concat(other);
+ const sets=[...new Set(prim.map(t=>t.set).concat((Object.keys(D.counts).some(k=>k==='veh'&&+D.counts[k])?['veh']:[])))];
+ $('#app').innerHTML=`
+ <h1>Scope of work</h1>
+ <div class="muted" style="font-size:17px;margin-top:4px">${esc(D.co)} — ${esc(D.site||'')}</div>
+ <p class="small muted">Prepared by ${esc(D.by||'Industry Reset')}${D.ph?' · '+esc(D.ph):''}. Confirm your spaces, keep or remove tasks, then send it back. Pricing updates as you go — you only pay for what you keep.</p>
+ <div class="card" style="border-color:rgba(255,90,0,.45)"><b style="color:var(--or)">We work alongside your cleaning crew.</b> <span class="muted">${esc(IR.SUPPLEMENT)}</span></div>
+ <div class="card"><h2><span class="step">1</span>Confirm your spaces</h2>
+  <p class="small muted" style="margin:6px 0 0">${D.est?'We pre-filled our best estimate from public information — please correct it to your actual count.':'Enter how many you want serviced.'}</p>
+  <div class="cnt">${prim.map(cnt).join('')}</div>
+  ${prim.some(t=>t.k==='sh')?`<p class="small muted">Field shelters are the operator buildings out in the process units — the ones that collect oil film, catalyst and coke dust, sulfur and boot-traffic grime.</p>
+  <details class="small" style="margin-top:10px"><summary class="muted" style="cursor:pointer">Other spaces (optional)</summary><div class="cnt">${other.map(cnt).join('')}</div></details>`:''}</div>
+ <div class="card"><h2><span class="step">2</span>Keep or remove tasks</h2>
+  <p class="small muted" style="margin:6px 0 0">Uncheck anything you don't need. Prices are per standard unit, per visit.</p>
+  ${sets.map(set=>{const T=IR.TASKS.filter(t=>t.set===set);return `${sets.length>1?`<h3 class="g">${set==='veh'?'Vehicles':'Buildings & shelters'}</h3>`:''}
+   <h3 class="g" style="color:var(--m);font-size:13px">Included</h3>${T.filter(t=>t.core).map(row).join('')}
+   <h3 class="g" style="color:var(--m);font-size:13px">Optional add-ons</h3>${T.filter(t=>!t.core).map(row).join('')}`}).join('')}</div>
+ <div class="card"><h2><span class="step">3</span>Frequency & approval</h2>
+  <label class="l">Service frequency</label><select id="plan">${Object.keys(IR.PLANS).map(p=>`<option ${D.plan===p?'selected':''}>${p}</option>`).join('')}</select>
+  <label class="l">Notes, access rules, best days / turnaround windows</label><textarea id="notes" rows="3"></textarea>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label class="l">Your name</label><input id="nm"></div><div><label class="l">Title</label><input id="ti"></div><div><label class="l">Email</label><input id="em" type="email"></div><div><label class="l">Phone</label><input id="phn"></div></div>
+  <div id="brk"></div>
+  <div class="noprint" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn" onclick="send('email')">Email it back</button><button class="btn g" onclick="send('sms')">Text it back</button><button class="btn g" onclick="print()">Print / save PDF</button></div>
+  <p class="small muted">Sending this approves the scope for a formal quote — nothing is billed until you sign the quote. First quarter is paid upfront; cancel anytime after.</p></div>`;
+ function cnt(t){return `<div>${esc(t.name)}${t.m!==1&&t.set==='space'?` <span class="muted small">(${t.m>1?t.m+'× price':'½ price'})</span>`:''}</div><input type="number" min="0" inputmode="numeric" data-k="${t.k}" value="${+D.counts[t.k]||0}">`}
+ function row(t){return `<label class="task ${D.sel.has(t.id)||t.lock?'':'off'}"><input type="checkbox" data-t="${t.id}" ${D.sel.has(t.id)||t.lock?'checked':''} ${t.lock?'disabled':''}><div><div class="n">${esc(t.name)}${t.lock?'<span class="lock">always included</span>':''}</div><div class="d">${esc(t.d)}</div></div><div class="pr">${t.core?'':'+'}${fmt(t.p)}</div></label>`}
+ document.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{D.counts[i.dataset.k]=Math.max(0,+i.value||0);calc()});
+ document.querySelectorAll('[data-t]').forEach(i=>i.onchange=()=>{i.checked?D.sel.add(i.dataset.t):D.sel.delete(i.dataset.t);i.closest('.task').classList.toggle('off',!i.checked);calc()});
+ $('#plan').onchange=e=>{D.plan=e.target.value;calc()};
+ calc();
+}
+function calc(){
+ const v=IR.visitTotal(D.counts,[...D.sel]),n=IR.PLANS[D.plan];
+ $('#brk').innerHTML=`<table>${v.lines.map(l=>`<tr><td>${esc(l.name)}</td><td class="r">${l.qty} × ${fmt(l.rate)}</td><td class="r">${fmt(l.qty*l.rate)}</td></tr>`).join('')}<tr><td><b>Per visit</b></td><td></td><td class="r"><b>${fmt(v.total)}</b></td></tr><tr><td class="muted">${D.plan} — per year</td><td></td><td class="r">${fmt(v.total*n)}</td></tr></table>`;
+ $('#sum').innerHTML=`<div class="in"><div><div class="muted small">Per visit</div><div class="big">${fmt(v.total)}</div></div><div><div class="muted small">${esc(D.plan)} · per year</div><div class="big" style="color:var(--or)">${fmt(v.total*n)}</div></div><span class="sp"></span><button class="btn" onclick="document.getElementById('plan').scrollIntoView({behavior:'smooth'})">Approve & send</button></div>`;
+ return v;
+}
+function send(how){
+ const nm=$('#nm').value.trim(); if(!nm){alert('Please add your name so we know who approved this.');$('#nm').focus();return}
+ const body=buildBody(nm);
+ if(how==='email') location.href=`mailto:${encodeURIComponent(D.em||'')}?subject=${encodeURIComponent('Scope approved — '+D.co)}&body=${encodeURIComponent(body)}`;
+ else location.href=`sms:${(D.ph||'4848365191').replace(/\D/g,'')}?&body=${encodeURIComponent(body)}`;
+}
+function buildBody(nm){
+ const v=calc(), removed=IR.TASKS.filter(t=>t.core&&!t.lock&&!D.sel.has(t.id)&&IR.TYPES.some(ty=>ty.set===t.set&&(+D.counts[ty.k]||0)>0)).map(t=>t.name);
+ const added=IR.TASKS.filter(t=>!t.core&&D.sel.has(t.id)).map(t=>t.name);
+ const resp={lid:D.lid,co:D.co,site:D.site,counts:D.counts,sel:[...D.sel],plan:D.plan,notes:$('#notes').value,name:nm,title:$('#ti').value,email:$('#em').value,phone:$('#phn').value,at:new Date().toISOString().slice(0,10)};
+ const body=`Scope approved for quoting — ${D.co} / ${D.site}\n\nApproved by: ${nm}${resp.title?', '+resp.title:''}\n${resp.email} ${resp.phone}\n\nSPACES\n${v.lines.map(l=>`${l.name}: ${l.qty}`).join('\n')}\n\nAdded: ${added.join(', ')||'none'}\nRemoved: ${removed.join(', ')||'none'}\nFrequency: ${D.plan}\nPer visit: ${fmt(v.total)} · Per year: ${fmt(v.total*IR.PLANS[D.plan])}\n\nNotes: ${resp.notes||'—'}\n\n(Industry Reset code — please leave this line)\nIRSCOPE:${IR.enc(resp)}`;
+ return body;
+}
+</script>
+</body>
+</html>
