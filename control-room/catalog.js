@@ -23,7 +23,6 @@ const TASKS = [
  {id:'hvac', set:'space', core:1, p:100, name:'HVAC grilles & returns', d:'Field dust loads these fast — cleaned so the unit stops recirculating it.'},
  {id:'seat', set:'space', core:1, p:175, name:'Faux-leather seating restore', d:'Brush-clean the grain and seams with a pH-neutral vinyl/PU cleaner, disinfect with low-toxicity accelerated hydrogen peroxide, then a water-based protectant. No alcohol, bleach or solvents that crack the coating.'},
  {id:'odor', set:'space', core:1, p:100, name:'Odor removal — hydrocarbon & sulfur', d:'Remove odor sources, then an oxidizing wipe-down of surfaces. Safe while the shelter stays in service.'},
- {id:'atp',  set:'space', core:1, lock:1, p:0, name:'ATP before/after readings', d:'We swab the same 5 high-touch spots before and after every visit and put the numbers in your report.'},
  {id:'blind',set:'space', core:0, p:150, name:'Blind exchange', d:'We swap in a clean set of blinds and take the dirty set for cleaning.'},
  {id:'detail',set:'space',core:0, p:50,  name:'Work-surface deep detail', d:'Degrease behind and under desks, consoles, log stations and cable runs.'},
  {id:'ppe',  set:'space', core:0, p:40,  name:'Gear & PPE storage area', d:'Coat hooks, cubbies, respirator / SCBA shelves and FRC hang-up areas.'},
