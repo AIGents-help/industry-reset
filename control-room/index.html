@@ -95,7 +95,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--p2)}
   <img src="/img/logo.png" alt="Industry Reset">
   <h2 class="brand" style="font-size:22px">AIGENTS CONTROL ROOM</h2>
   <p class="muted small">Industry Reset operations · authorized crew only</p>
-  <input id="pass" type="password" placeholder="Passcode" autocomplete="current-password" onkeydown="if(event.key==='Enter')unlock()">
+  <input id="pass" type="password" placeholder="Passcode" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')unlock()">
   <button class="btn mt" style="width:100%" onclick="unlock()">Enter</button>
   <p id="gerr" class="bad small"></p>
  </div>
@@ -178,9 +178,9 @@ const leadName=id=>{const l=lead(id);return l?`${l.company} — ${l.site}`:'(no 
 
 /* ============ GATE ============ */
 async function unlock(){
- load();const h=await sha($('#pass').value.trim());
- const want=S.settings.passHash||await sha(DEFAULT_PASS);
- if(h===want){sessionStorage.setItem('ir_ok','1');boot()}else{$('#gerr').textContent='Wrong passcode'}
+ load();const raw=$('#pass').value.trim();
+ const ok=S.settings.passHash?(await sha(raw))===S.settings.passHash:raw.toLowerCase()===DEFAULT_PASS;
+ if(ok){sessionStorage.setItem('ir_ok','1');boot()}else{$('#gerr').textContent='Wrong passcode'}
 }
 function boot(){load();$('#gate').style.display='none';$('#app').style.display='block';renderNav();go(location.hash.slice(1)||'dash')}
 if(sessionStorage.getItem('ir_ok'))boot();
