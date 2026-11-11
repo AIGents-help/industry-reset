@@ -10,7 +10,9 @@ const TYPES = [
  {k:'brk', name:'Break / lunch / locker BRMs',   short:'Break',    m:1,   set:'space'},
  {k:'gate',name:'Gate houses & guard booths',    short:'Gate',     m:0.5, set:'space'},
  {k:'trl', name:'Office / crew trailers',        short:'Trailers', m:1,   set:'space'},
- {k:'veh', name:'Vehicles (Fleet Reset)',        short:'Vehicles', m:1,   set:'veh', focus:1}
+ {k:'veh', name:'Vehicles (Fleet Reset)',        short:'Vehicles', m:1,   set:'veh', focus:1},
+ // Added after 'veh' so existing estimate mix[] indexes stay valid. Priced at standard until the first timed visit.
+ {k:'ssh', name:'Small field shelters (2-room, ~300 sq ft or less)', short:'Small shelters', m:1, set:'space'}
 ];
 
 // Task list. core = included by default (client may remove). lock = can't be removed.
@@ -18,12 +20,14 @@ const TYPES = [
 const TASKS = [
  {id:'mob',  set:'space', core:1, lock:1, p:125, name:'Mobilization, safety & photo report', d:'Gate check-in, permits, gas-test coordination, FRC/PPE, before/after photo report.'},
  {id:'steam',set:'space', core:1, p:175, name:'Dry-steam degrease — walls, ceiling & door', d:'Cuts the hydrocarbon film and soot that builds up on every surface — beyond what a daily wipe-down reaches.'},
- {id:'dust', set:'space', core:1, p:100, name:'Catalyst, coke & sulfur dust removal (HEPA)', d:'Top-down HEPA removal of fine process dust: ledges, light fixtures, cabinet tops, cable trays.'},
+ {id:'dust', set:'space', core:1, p:100, name:'Ceiling line & process dust removal (HEPA)', d:'Top-down removal of catalyst, coke and sulfur dust from the ceiling line, conduit, junction boxes, light fixture tops, ledges and cable trays. Desks and electronics are covered in plastic first; HEPA vacuum before any wiping; ceiling panels done from the floor with pole-mounted microfiber; a fiberglass platform ladder for corner detail — we never stand on desks or furniture. Damp cloth only near fixtures, exit signs and junction boxes.'},
  {id:'floor',set:'space', core:1, p:100, name:'Linoleum-safe floor decon', d:'pH-neutral machine scrub with minimal water lifts tracked-in oil without the high-pH degreasers that crack and yellow linoleum. No steam on floors.'},
  {id:'hvac', set:'space', core:1, p:100, name:'HVAC grilles & returns', d:'Field dust loads these fast — cleaned so the unit stops recirculating it.'},
  {id:'seat', set:'space', core:1, p:175, name:'Faux-leather seating restore', d:'Brush-clean the grain and seams with a pH-neutral vinyl/PU cleaner, disinfect with low-toxicity accelerated hydrogen peroxide, then a water-based protectant. No alcohol, bleach or solvents that crack the coating.'},
  {id:'odor', set:'space', core:1, p:100, name:'Odor removal — hydrocarbon & sulfur', d:'Remove odor sources, then an oxidizing wipe-down of surfaces. Safe while the shelter stays in service.'},
- {id:'blind',set:'space', core:0, p:150, name:'Blind exchange', d:'We swap in a clean set of blinds and take the dirty set for cleaning.'},
+ {id:'blind',set:'space', core:0, p:150, name:'Blind exchange', d:'Every window is tagged and measured; we swap in a clean, size-matched set and take the dirty set for cleaning.'},
+ {id:'win',  set:'space', core:0, p:150, name:'Window frames, sills & inside glass', d:'With the blinds down: HEPA the tracks and sills, brush and wipe the frames and rubber gaskets (no abrasives), and clean the inside glass. Best paired with the blind exchange.'},
+ {id:'tops', set:'space', core:0, p:40,  name:'Locker, fridge & cabinet tops', d:'The surfaces nobody reaches. Client clears them before the visit, or we stage items in labeled totes and put them back.'},
  {id:'detail',set:'space',core:0, p:50,  name:'Work-surface deep detail', d:'Degrease behind and under desks, consoles, log stations and cable runs.'},
  {id:'ppe',  set:'space', core:0, p:40,  name:'Gear & PPE storage area', d:'Coat hooks, cubbies, respirator / SCBA shelves and FRC hang-up areas.'},
  {id:'mold', set:'space', core:0, p:125, name:'Mold / mildew treatment', d:'Treat visible growth on walls, ceilings and door seals.'},
