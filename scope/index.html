@@ -59,7 +59,7 @@ if(D){
  <h1>Scope of work</h1>
  <div class="muted" style="font-size:17px;margin-top:4px">${esc(D.co)} — ${esc(D.site||'')}</div>
  <p class="small muted">Prepared by ${esc(D.by||'Industry Reset')}${D.ph?' · '+esc(D.ph):''}. Confirm your spaces, keep or remove tasks, then send it back. Pricing updates as you go — you only pay for what you keep.</p>
- <div class="card" style="border-color:rgba(255,90,0,.45)"><b style="color:var(--or)">We work alongside your cleaning crew.</b> <span class="muted">${esc(IR.SUPPLEMENT)} ${esc(IR.POSTED)}</span></div>
+ <div class="card" style="border-color:rgba(255,90,0,.45)"><b style="color:var(--or)">We work alongside your cleaning crew.</b> <span class="muted">${esc(IR.SUPPLEMENT)}</span></div>
  <div class="card"><h2><span class="step">1</span>Confirm your spaces</h2>
   <p class="small muted" style="margin:6px 0 0">${D.est?'We pre-filled our best estimate from public information — please correct it to your actual count.':'Enter how many you want serviced.'}</p>
   <div class="cnt">${prim.map(cnt).join('')}</div>

@@ -19,7 +19,7 @@ const TYPES = [
 // p = price per standard unit per visit (multiplied by space type). Core 'space' tasks sum to $875.
 const TASKS = [
  {id:'mob',  set:'space', core:1, lock:1, p:125, name:'Mobilization, safety & photo report', d:'Gate check-in, permits, gas-test coordination, FRC/PPE, before/after photo report.'},
- {id:'steam',set:'space', core:1, p:175, name:'Reset Zones — degrease & scrub walls, ceiling & door', d:'The ceiling seams, corners and door that nobody reaches. Dry dust off first, then unscented water-based degreaser, a soft swivel pad on a non-conductive pole, and microfiber — all from the floor. Conduit and fixtures are wiped by hand, never sprayed or steamed.'},
+ {id:'steam',set:'space', core:1, p:175, name:'Dry-steam degrease — walls, ceiling & door', d:'Cuts the hydrocarbon film and soot that builds up on every surface — beyond what a daily wipe-down reaches.'},
  {id:'dust', set:'space', core:1, p:100, name:'Ceiling line & process dust removal (HEPA)', d:'Top-down removal of catalyst, coke and sulfur dust from the ceiling line, conduit, junction boxes, light fixture tops, ledges and cable trays. Desks and electronics are covered in plastic first; HEPA vacuum before any wiping; ceiling panels done from the floor with pole-mounted microfiber; a fiberglass platform ladder for corner detail — we never stand on desks or furniture. Damp cloth only near fixtures, exit signs and junction boxes.'},
  {id:'floor',set:'space', core:1, p:100, name:'Linoleum-safe floor decon', d:'pH-neutral machine scrub with minimal water lifts tracked-in oil without the high-pH degreasers that crack and yellow linoleum. No steam on floors.'},
  {id:'hvac', set:'space', core:1, p:100, name:'HVAC grilles & returns', d:'Field dust loads these fast — cleaned so the unit stops recirculating it.'},
@@ -48,7 +48,6 @@ const TASKS = [
  {id:'vext', set:'veh', core:0, p:40, name:'Exterior wash', d:'Hand wash of the vehicle exterior.'}
 ];
 const SUPPLEMENT = 'We supplement your resident cleaning crew — we don\'t replace them. Routine janitorial (trash, restrooms, daily wipe-downs) stays with your crew; we do the deep field-contamination reset they can\'t reach.';
-const POSTED = 'We don\'t remove or re-hang posted documents, permits or procedures. We clean around them and focus on the zones nobody else reaches.';
 const PLANS = {Quarterly:4,'Twice a year':2,Annual:1,'One-time':1};
 
 const coreSel = () => TASKS.filter(t=>t.core).map(t=>t.id);
@@ -82,5 +81,5 @@ function revenue(est, visitsPerYear, sel){
 const enc = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const dec = s => { s=String(s||'').trim().replace(/^IRSCOPE:/,'').replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; return JSON.parse(decodeURIComponent(escape(atob(s)))); };
 
-window.IR = {SUPPLEMENT, POSTED, BASE, TYPES, TASKS, PLANS, coreSel, unitPrice, visitTotal, mixToCounts, countTotal, revenue, focusType, enc, dec};
+window.IR = {SUPPLEMENT, BASE, TYPES, TASKS, PLANS, coreSel, unitPrice, visitTotal, mixToCounts, countTotal, revenue, focusType, enc, dec};
 })();
